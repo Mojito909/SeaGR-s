@@ -43,6 +43,7 @@ public class AntFarm extends ModelTask {
     private int foodInTrough = 0;
 
     private FarmTool[] farmTools;
+    private String drawActivityId;
 
     @Override
     public String getName() {
@@ -395,7 +396,17 @@ DonationType.nickNames));
             }
             if (acceptGift.getValue() && joFarmVO.getJSONObject("subFarmVO").has("giftRecord") && foodStockLimit - foodStock >= 10) {
                 acceptGift();
-            } return jo;
+            }
+
+            String str = jo.toString();
+            if (str.contains("prizeMachine.html")) {
+                java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("prizeMachine.html\\?activityId=([0-9]+)").matcher(str);
+                if (matcher.find()) {
+                    drawActivityId = matcher.group(1);
+                    Log.record("发现限时抽抽乐活动，activityId=" + drawActivityId);
+                }
+            }
+            return jo;
         } catch (Throwable t) {
             Log.i(TAG, "enterFarm err:"); Log.printStackTrace(TAG, t);
         } return null;
@@ -1458,17 +1469,61 @@ DonationType.nickNames));
 
     /* 抽抽乐 */
     private void drawMachine() {
-        doDrawTimesTask(); try {
+        doDrawTimesTask();
+        try {
             JSONObject jo = new JSONObject(AntFarmRpcCall.enterDrawMachine());
             int leftDrawTimes = jo.getJSONObject("userInfo").optInt("leftDrawTimes", 0);
             for (int i = 0; i < leftDrawTimes; i++) {
                 if (!drawPrize()) {
                     return;
-                } TimeUtil.sleep(5000);
+                }
+                TimeUtil.sleep(5000);
             }
         } catch (Throwable t) {
-            Log.i(TAG, "drawMachine err:"); Log.printStackTrace(TAG, t);
+            Log.i(TAG, "drawMachine err:");
+            Log.printStackTrace(TAG, t);
         }
+
+        if (!StringUtil.isEmpty(drawActivityId)) {
+            drawMachineLimited();
+        }
+    }
+
+    private void drawMachineLimited() {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.enterDrawMachine(drawActivityId));
+            if (!MessageUtil.checkMemo(TAG, jo)) {
+                return;
+            }
+            int leftDrawTimes = jo.getJSONObject("userInfo").optInt("leftDrawTimes", 0);
+            if (leftDrawTimes > 0) {
+                Log.record("限时抽抽乐剩余次数:" + leftDrawTimes);
+            }
+            for (int i = 0; i < leftDrawTimes; i++) {
+                if (!drawPrizeLimited()) {
+                    return;
+                }
+                TimeUtil.sleep(5000);
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "drawMachineLimited err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    private Boolean drawPrizeLimited() {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.drawPrize(drawActivityId));
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                String title = jo.optString("title");
+                Log.farm("限时抽奖🎟️抽中[" + title + "]");
+                return true;
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "drawPrizeLimited err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return false;
     }
 
     private void doDrawTimesTask() {
