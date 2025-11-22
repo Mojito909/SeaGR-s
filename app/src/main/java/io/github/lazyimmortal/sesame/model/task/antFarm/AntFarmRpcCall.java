@@ -429,6 +429,18 @@ public class AntFarmRpcCall {
                 "\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]");
     }
 
+    public static String listFarmTaskForIpDraw(String activityId) {
+        return ApplicationHook.requestString("com.alipay.antfarm.listFarmTask", "[{\"requestType\":\"NORMAL\"," +
+                "\"sceneCode\":\"ANTFARM\",\"signSceneCode\":\"\",\"source\":\"H5\"," +
+                "\"taskSceneCode\":\"ANTFARM_IP_DRAW_TASK\",\"topTask\":\"\"}]");
+    }
+
+    public static String finishTask(String taskId, String taskSceneCode) {
+        return ApplicationHook.requestString("com.alipay.antfarm.finishTask", "[{\"requestType\":\"RPC\"," +
+                "\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"taskId\":\"" + taskId + "\"," +
+                "\"taskSceneCode\":\"" + taskSceneCode + "\"}]");
+    }
+
     public static String listFarmDrawTimesTask() {
         return ApplicationHook.requestString("com.alipay.antfarm.listFarmTask", "[{\"requestType\":\"NORMAL\"," +
                 "\"sceneCode\":\"ANTFARM\",\"signSceneCode\":\"\",\"source\":\"H5\"," + "\"taskSceneCode" +

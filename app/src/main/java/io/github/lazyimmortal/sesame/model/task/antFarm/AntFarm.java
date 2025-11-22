@@ -1499,6 +1499,7 @@ DonationType.nickNames));
             if (leftDrawTimes > 0) {
                 Log.record("限时抽抽乐剩余次数:" + leftDrawTimes);
             }
+            doIpDrawTask(drawActivityId);
             for (int i = 0; i < leftDrawTimes; i++) {
                 if (!drawPrizeLimited()) {
                     return;
@@ -1524,6 +1525,43 @@ DonationType.nickNames));
             Log.printStackTrace(TAG, t);
         }
         return false;
+    }
+
+    private void doIpDrawTask(String activityId) {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.listFarmTaskForIpDraw(activityId));
+            if (!MessageUtil.checkMemo(TAG, jo)) {
+                return;
+            }
+            JSONArray farmTaskList = jo.getJSONArray("farmTaskList");
+            for (int i = 0; i < farmTaskList.length(); i++) {
+                jo = farmTaskList.getJSONObject(i);
+                String taskStatus = jo.getString("taskStatus");
+                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
+                    continue;
+                }
+                String taskId = jo.getString("taskId");
+                String title = jo.getString("title");
+                if (TaskStatus.TODO.name().equals(taskStatus)) {
+                    if ("IP_SHANGYEHUA_TASK".equals(taskId)) {
+                        JSONObject result = new JSONObject(AntFarmRpcCall.finishTask(taskId, "ANTFARM_IP_DRAW_TASK"));
+                        if (MessageUtil.checkSuccess(TAG, result)) {
+                            Log.farm("限时抽抽乐🧾完成[" + title + "]");
+                        }
+                    }
+                }
+                if (TaskStatus.FINISHED.name().equals(taskStatus) || TaskStatus.TODO.name().equals(taskStatus)) {
+                    TimeUtil.sleep(1000);
+                    JSONObject sginRes = new JSONObject(AntFarmRpcCall.receiveFarmTaskAward(taskId));
+                    if (MessageUtil.checkSuccess(TAG, sginRes)) {
+                        Log.farm("限时抽抽乐🎖️[" + title + "]获得抽奖机会");
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "doIpDrawTask err:");
+            Log.printStackTrace(TAG, t);
+        }
     }
 
     private void doDrawTimesTask() {
